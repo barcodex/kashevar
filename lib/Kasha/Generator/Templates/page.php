@@ -1,6 +1,10 @@
 <?php
 
-/**	@var Kasha/Page */
+use Kasha\Page;
+use Kasha\PageHelper;
+use Kasha\TextProcessor;
+
+/**	@var Page */
 $page->add('title', TextProcessor::doTemplate('%MODULE%', '%NAME%.title', $pageParams));
 
 // master page placeholders

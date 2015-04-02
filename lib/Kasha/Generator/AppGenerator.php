@@ -25,33 +25,37 @@ class AppGenerator
 
 	public function createModule($moduleName)
 	{
-		$this->createFolderIfNotExists('/app');
-		$this->createFolderIfNotExists('/app/modules');
-		$this->createFolderIfNotExists('/app/modules/' . $moduleName);
-		$this->createFolderIfNotExists('/app/modules/' . $moduleName . '/actions');
-		$this->createFolderIfNotExists('/app/modules/' . $moduleName . '/templates');
-		$this->createFolderIfNotExists('/app/modules/' . $moduleName . '/sql');
+		if ($moduleName != '') {
+			$this->createFolderIfNotExists('/app');
+			$this->createFolderIfNotExists('/app/modules');
+			$this->createFolderIfNotExists('/app/modules/' . $moduleName);
+			$this->createFolderIfNotExists('/app/modules/' . $moduleName . '/actions');
+			$this->createFolderIfNotExists('/app/modules/' . $moduleName . '/templates');
+			$this->createFolderIfNotExists('/app/modules/' . $moduleName . '/sql');
+		}
 	}
 
 	public function createAction($moduleName, $actionName, $params)
 	{
-		// first, make sure that module exists
-		$this->createModule($moduleName);
-		// @TODO create action file and related files, depending on type
-		if (array_key_exists('', $params)) {
-			switch ($params['type']) {
-				case 'p':
-					$this->createPageActionFiles($moduleName, $actionName);
-					break;
-				case 'f':
-					$this->createFormActionFiles($moduleName, $actionName);
-					break;
-				case 'i':
-					$this->createInlineActionFiles($moduleName, $actionName);
-					break;
-				case 'j':
-					$this->createJsonActionFiles($moduleName, $actionName);
-					break;
+		if ($moduleName != '' && $actionName != '') {
+			// first, make sure that module exists
+			$this->createModule($moduleName);
+			// @TODO create action file and related files, depending on type
+			if (array_key_exists('type', $params)) {
+				switch ($params['type']) {
+					case 'p':
+						$this->createPageActionFiles($moduleName, $actionName);
+						break;
+					case 'f':
+						$this->createFormActionFiles($moduleName, $actionName);
+						break;
+					case 'i':
+						$this->createInlineActionFiles($moduleName, $actionName);
+						break;
+					case 'j':
+						$this->createJsonActionFiles($moduleName, $actionName);
+						break;
+				}
 			}
 		}
 	}

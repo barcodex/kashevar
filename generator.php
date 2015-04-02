@@ -56,7 +56,9 @@ function createApp($params)
 		do {
 			print 'module name (provide no name to quit): ';
 			$moduleName = trim(fgets($fp));
-			$g->createModule($moduleName);
+			if ($moduleName != '') {
+				$g->createModule($moduleName);
+			}
 		} while ($moduleName != '');
 	}
 }
@@ -83,11 +85,12 @@ function createModule($params)
 				print 'action name (provide no name to quit): ';
 				$actionName = trim(fgets($fp));
 				if ($actionName != '') {
-					print 'action type ([P]age/[F]orm/[I]nline/[J]SON): ';
+					print 'action type, p (page) / f (form) / i (inline) / j (JSON): ';
 					$actionType = strtolower(trim(fgets($fp)));
 					if (in_array($actionType, ['p', 'f', 'i', 'j'])) {
 						$g->createAction($moduleName, $actionName, array('type' => $actionType));
 					}
+					print PHP_EOL;
 				}
 			} while ($actionName != '');
 		}
