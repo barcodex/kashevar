@@ -1,8 +1,9 @@
 <?php
 
-use Kasha\Runtime;
-use Kasha\TextProcessor;
-use Kasha\Validator;
+use Kasha\Core\Runtime;
+use Kasha\Core\Validator;
+use Kasha\Temple\Util;
+use Kasha\Templar\TextProcessor;
 
 $url = Util::lavnn('_nextUrl', $_REQUEST, '');
 
