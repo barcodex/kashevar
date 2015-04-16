@@ -21,6 +21,8 @@ class AppGenerator
 		$this->createFolderIfNotExists('/app/cache');
 		$this->createFolderIfNotExists('/app/modules');
 		$this->createFolderIfNotExists('/app/modules.translation');
+
+		$this->copyFileIfNotExists('/app/autoload.php', 'autoload.php');
 	}
 
 	public function createModule($moduleName)
@@ -122,6 +124,19 @@ class AppGenerator
 	{
 		if (!file_exists($this->rootPath . $folderPath)) {
 			mkdir($this->rootPath . $folderPath);
+		}
+	}
+
+	private function copyFileIfNotExists($fileName, $templateName, $replacements = array())
+	{
+		if (!file_exists($this->rootPath . $fileName)) {
+			$code = file_get_contents(__DIR__ . '/Templates/' . $templateName);
+			if (count($replacements)) {
+				foreach($replacements as $search => $replace) {
+					$code = str_replace($search, $replace, $code);
+				}
+			}
+			$this->writeFile($fileName, $code);
 		}
 	}
 

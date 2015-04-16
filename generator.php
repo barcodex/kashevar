@@ -50,7 +50,7 @@ function createApp($params)
 	}
 	$g->createApp();
 	$fp = fopen("php://stdin", "r");
-	print 'Create modules? (Y)';
+	print 'Create modules? (Y/n)';
 	$answer = strtoupper(trim(fgets($fp)));
 	if ($answer == 'Y' || $answer == '') {
 		do {
@@ -78,7 +78,7 @@ function createModule($params)
 		}
 		$g->createModule($moduleName);
 		$fp = fopen("php://stdin", "r");
-		print 'Create actions? (Y)';
+		print 'Create actions? (Y/n)';
 		$answer = strtoupper(trim(fgets($fp)));
 		if ($answer == 'Y' || $answer == '') {
 			do {
