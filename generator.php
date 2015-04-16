@@ -48,19 +48,8 @@ function createApp($params)
 		$appName = $params[0];
 		$g = new AppGenerator(dirname(__DIR__) . '/' . $appName);
 	}
+	$g->setConfig(__DIR__ . '/config.json');
 	$g->createApp();
-	$fp = fopen("php://stdin", "r");
-	print 'Create modules? (Y/n)';
-	$answer = strtoupper(trim(fgets($fp)));
-	if ($answer == 'Y' || $answer == '') {
-		do {
-			print 'module name (provide no name to quit): ';
-			$moduleName = trim(fgets($fp));
-			if ($moduleName != '') {
-				$g->createModule($moduleName);
-			}
-		} while ($moduleName != '');
-	}
 }
 
 function createModule($params)

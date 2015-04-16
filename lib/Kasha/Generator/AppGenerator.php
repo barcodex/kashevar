@@ -2,9 +2,12 @@
 
 namespace Kasha\Generator;
 
+use Temple\Util;
+
 class AppGenerator
 {
 	private $rootPath = '';
+	private $config = array();
 
 	public function __construct($rootPath)
 	{
@@ -15,6 +18,32 @@ class AppGenerator
 		}
 	}
 
+	public function setConfig($filePath)
+	{
+		if (file_exists($filePath)) {
+			$this->config = json_decode(file_get_contents($filePath), true);
+		}
+	}
+
+	public function getAppName()
+	{
+		return basename($this->rootPath);
+	}
+
+	private function prompt($fp, $message, $default = '')
+	{
+		$output = $default;
+		do {
+			print $message . ($default != '' ? " ($default) " : '');
+			$answer = trim(fgets($fp));
+			if ($answer != '') {
+				$output = $answer;
+			}
+		} while ($output == '');
+
+		return $output;
+	}
+
 	public function createApp()
 	{
 		$this->createFolderIfNotExists('/app');
@@ -22,7 +51,39 @@ class AppGenerator
 		$this->createFolderIfNotExists('/app/modules');
 		$this->createFolderIfNotExists('/app/modules.translation');
 
+		// open STDIN to get more values interactively
+		$fp = fopen("php://stdin", "r");
+
 		$this->copyFileIfNotExists('/app/autoload.php', 'autoload.php');
+
+		$replacements = $this->config;
+		$replacements['APP_NAME'] = $this->getAppName();
+		$namespace = Util::lavnn('APP_NAMESPACE', $replacements, '');
+		$replacements['APP_NAMESPACE'] = $this->prompt($fp, 'Project namespace?', $namespace);
+		$description = Util::lavnn('DESCRIPTION', $replacements, '');
+		$replacements['DESCRIPTION'] = $this->prompt($fp, 'Project description?', $description);
+		$description = Util::lavnn('WEBSITE', $replacements, '');
+		$replacements['WEBSITE'] = $this->prompt($fp, 'Website URL?', $description);
+		$description = Util::lavnn('LICENSE', $replacements, '');
+		$replacements['LICENSE'] = $this->prompt($fp, 'License?', $description);
+		$description = Util::lavnn('AUTHOR_NAME', $replacements, '');
+		$replacements['AUTHOR_NAME'] = $this->prompt($fp, 'Author name?', $description);
+		$description = Util::lavnn('AUTHOR_EMAIL', $replacements, '');
+		$replacements['AUTHOR_EMAIL'] = $this->prompt($fp, 'Author email?', $description);
+		$this->copyFileIfNotExists('/composer.json', 'composer.json', $replacements);
+
+		print 'Create modules? (Y/n)';
+		$answer = strtoupper(trim(fgets($fp)));
+		if ($answer == 'Y' || $answer == '') {
+			do {
+				print 'module name (provide no name to quit): ';
+				$moduleName = trim(fgets($fp));
+				if ($moduleName != '') {
+					$this->createModule($moduleName);
+				}
+			} while ($moduleName != '');
+		}
+
 	}
 
 	public function createModule($moduleName)
@@ -133,7 +194,7 @@ class AppGenerator
 			$code = file_get_contents(__DIR__ . '/Templates/' . $templateName);
 			if (count($replacements)) {
 				foreach($replacements as $search => $replace) {
-					$code = str_replace($search, $replace, $code);
+					$code = str_replace('%' . $search . '%', $replace, $code);
 				}
 			}
 			$this->writeFile($fileName, $code);
