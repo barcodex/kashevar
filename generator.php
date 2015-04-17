@@ -20,6 +20,9 @@ if ($argc == 1) {
 		case 'create:module':
 			createModule($argv);
 			break;
+		case 'create:action':
+			createAction($argv);
+			break;
 		default:
 			printUsage();
 			break;
@@ -36,8 +39,9 @@ function printHelp()
 {
 	printUsage();
 	print '  [params] can be one of the following:' . PHP_EOL;
-	print '  create:app [[name]]' . PHP_EOL;
-	print '  create:module [appName] [[moduleName]]' . PHP_EOL;
+	print '  create:app [[appName]]' . PHP_EOL;
+	print '  create:module [moduleName] [[appName]]' . PHP_EOL;
+	print '  create:action [actionType:actionName] [moduleName] [[appName]]' . PHP_EOL;
 }
 
 function createApp($params)
@@ -54,7 +58,7 @@ function createApp($params)
 
 function createModule($params)
 {
-	if (count($params) == 0) {
+	if (count($params) < 1) {
 		printHelp();
 	} else {
 		// first parameter is expected to be a module name
@@ -66,22 +70,27 @@ function createModule($params)
 			$g = new AppGenerator(dirname(__DIR__) . '/' . $appName);
 		}
 		$g->createModule($moduleName);
-		$fp = fopen("php://stdin", "r");
-		print 'Create actions? (Y/n)';
-		$answer = strtoupper(trim(fgets($fp)));
-		if ($answer == 'Y' || $answer == '') {
-			do {
-				print 'action name (provide no name to quit): ';
-				$actionName = trim(fgets($fp));
-				if ($actionName != '') {
-					print 'action type, p (page) / f (form) / i (inline) / j (JSON): ';
-					$actionType = strtolower(trim(fgets($fp)));
-					if (in_array($actionType, ['p', 'f', 'i', 'j'])) {
-						$g->createAction($moduleName, $actionName, array('type' => $actionType));
-					}
-					print PHP_EOL;
-				}
-			} while ($actionName != '');
+	}
+}
+
+function createAction($params)
+{
+	if (count($params) < 2) {
+		printHelp();
+	} else {
+		list($actionType, $actionName) = explode(':', $params[0], 0); // expected to be "type:name", e.g. "f:save"
+		if ($actionName == '') {
+			printHelp();
+		} else {
+			// second parameter is expected to be a module name
+			$moduleName = $params[1];
+			if (count($params) == 2) {
+				$g = new AppGenerator(__DIR__);
+			} else { // third parameter (if given) is an app name
+				$appName = $params[2];
+				$g = new AppGenerator(dirname(__DIR__) . '/' . $appName);
+			}
+			$g->createAction($moduleName, $actionName, array('type' => $actionType));
 		}
 	}
 }

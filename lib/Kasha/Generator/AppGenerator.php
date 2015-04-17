@@ -6,6 +6,7 @@ use Temple\Util;
 
 class AppGenerator
 {
+	private $fp = null;
 	private $rootPath = '';
 	private $config = array();
 
@@ -16,6 +17,8 @@ class AppGenerator
 		if (!file_exists($rootPath)) {
 			mkdir($rootPath);
 		}
+		// open STDIN to get more values interactively
+		$this->fp = fopen("php://stdin", "r");
 	}
 
 	public function setConfig($filePath)
@@ -30,12 +33,12 @@ class AppGenerator
 		return basename($this->rootPath);
 	}
 
-	private function prompt($fp, $message, $default = '')
+	private function prompt($message, $default = '')
 	{
 		$output = $default;
 		do {
-			print $message . ($default != '' ? " ($default) " : '');
-			$answer = trim(fgets($fp));
+			print $message . ($default != '' ? " ($default) " : ' ');
+			$answer = trim(fgets($this->fp));
 			if ($answer != '') {
 				$output = $answer;
 			}
@@ -51,42 +54,40 @@ class AppGenerator
 		$this->createFolderIfNotExists('/app/modules');
 		$this->createFolderIfNotExists('/app/modules.translation');
 
-		// open STDIN to get more values interactively
-		$fp = fopen("php://stdin", "r");
-
 		$this->copyFileIfNotExists('/app/autoload.php', 'autoload.php');
 
 		$replacements = $this->config;
 		$replacements['APP_NAME'] = $this->getAppName();
 		$namespace = Util::lavnn('APP_NAMESPACE', $replacements, '');
-		$replacements['APP_NAMESPACE'] = $this->prompt($fp, 'Project namespace?', $namespace);
+		$replacements['APP_NAMESPACE'] = $this->prompt('Project namespace?', $namespace);
 		$description = Util::lavnn('DESCRIPTION', $replacements, '');
-		$replacements['DESCRIPTION'] = $this->prompt($fp, 'Project description?', $description);
+		$replacements['DESCRIPTION'] = $this->prompt('Project description?', $description);
 		$description = Util::lavnn('WEBSITE', $replacements, '');
-		$replacements['WEBSITE'] = $this->prompt($fp, 'Website URL?', $description);
+		$replacements['WEBSITE'] = $this->prompt('Website URL?', $description);
 		$description = Util::lavnn('LICENSE', $replacements, '');
-		$replacements['LICENSE'] = $this->prompt($fp, 'License?', $description);
+		$replacements['LICENSE'] = $this->prompt('License?', $description);
 		$description = Util::lavnn('AUTHOR_NAME', $replacements, '');
-		$replacements['AUTHOR_NAME'] = $this->prompt($fp, 'Author name?', $description);
+		$replacements['AUTHOR_NAME'] = $this->prompt('Author name?', $description);
 		$description = Util::lavnn('AUTHOR_EMAIL', $replacements, '');
-		$replacements['AUTHOR_EMAIL'] = $this->prompt($fp, 'Author email?', $description);
+		$replacements['AUTHOR_EMAIL'] = $this->prompt('Author email?', $description);
 		$this->copyFileIfNotExists('/composer.json', 'composer.json', $replacements);
 
 		print 'Create modules? (Y/n)';
-		$answer = strtoupper(trim(fgets($fp)));
+		$answer = strtoupper(trim(fgets($this->fp)));
 		if ($answer == 'Y' || $answer == '') {
 			do {
 				print 'module name (provide no name to quit): ';
-				$moduleName = trim(fgets($fp));
+				$moduleName = trim(fgets($this->fp));
 				if ($moduleName != '') {
 					$this->createModule($moduleName);
 				}
+				print PHP_EOL;
 			} while ($moduleName != '');
 		}
 
 	}
 
-	public function createModule($moduleName)
+	public function createModuleStructure($moduleName)
 	{
 		if ($moduleName != '') {
 			$this->createFolderIfNotExists('/app');
@@ -98,12 +99,32 @@ class AppGenerator
 		}
 	}
 
+	public function createModule($moduleName)
+	{
+		$this->createModuleStructure($moduleName);
+
+		print 'Create actions? (Y/n)';
+		$answer = strtoupper(trim(fgets($this->fp)));
+		if ($answer == 'Y' || $answer == '') {
+			do {
+				print 'action name (provide no name to quit): ';
+				$actionName = trim(fgets($this->fp));
+				if ($actionName != '') {
+					print 'action type; p (page) / f (form) / i (inline) / j (JSON): ';
+					$actionType = strtolower(trim(fgets($this->fp)));
+					if (in_array($actionType, ['p', 'f', 'i', 'j'])) {
+						$this->createAction($moduleName, $actionName, array('type' => $actionType));
+					}
+					print PHP_EOL;
+				}
+			} while ($actionName != '');
+		}
+	}
+
 	public function createAction($moduleName, $actionName, $params)
 	{
 		if ($moduleName != '' && $actionName != '') {
-			// first, make sure that module exists
-			$this->createModule($moduleName);
-			// @TODO create action file and related files, depending on type
+			$this->createModuleStructure($moduleName);
 			if (array_key_exists('type', $params)) {
 				switch ($params['type']) {
 					case 'p':
@@ -127,58 +148,46 @@ class AppGenerator
 	{
 		// action itself
 		$fileName = '/app/modules/' . $moduleName . '/actions/' . $actionName . '.php';
-		$code = file_get_contents(__DIR__ . '/Templates/page.php');
-		$code = str_replace('%MODULE%', $moduleName, $code);
-		$code = str_replace('%NAME%', $actionName, $code);
-		$this->writeFile($fileName, $code);
+		$replacements = array('MODULE' => $moduleName, 'NAME' => $actionName);
+		$this->copyFileIfNotExists($fileName, 'page.php');
 		// main template
 		$fileName = '/app/modules/' . $moduleName . '/templates/' . $actionName . '.html';
-		$code = file_get_contents(__DIR__ . '/Templates/page.html');
-		$this->writeFile($fileName, $code);
+		$this->copyFileIfNotExists($fileName, 'page.html');
 		// title template
 		$fileName = '/app/modules/' . $moduleName . '/templates/' . $actionName . '.title.html';
 		$this->writeFile($fileName, '[[]]');
 		// js template
 		$fileName = '/app/modules/' . $moduleName . '/templates/' . $actionName . '.js.html';
-		$code = file_get_contents(__DIR__ . '/Templates/page.js.html');
-		$this->writeFile($fileName, $code);
+		$this->copyFileIfNotExists($fileName, 'page.js.html');
 	}
 
 	private function createFormActionFiles($moduleName, $actionName)
 	{
 		// action itself
 		$fileName = '/app/modules/' . $moduleName . '/actions/' . $actionName . '.php';
-		$code = file_get_contents(__DIR__ . '/Templates/form.php');
-		$code = str_replace('%MODULE%', $moduleName, $code);
-		$code = str_replace('%NAME%', $actionName, $code);
-		$this->writeFile($fileName, $code);
+		$replacements = array('MODULE' => $moduleName, 'NAME' => $actionName);
+		$this->copyFileIfNotExists($fileName, 'form.php', $replacements);
 		// flash/error messages for success/failure
 		$fileName = '/app/modules/' . $moduleName . '/templates/flash.' . $actionName . '.success.html';
-		$code = file_get_contents(__DIR__ . '/Templates/form.flash.html');
-		$this->writeFile($fileName, $code);
-		$fileName = '/app/modules/' . $moduleName . '/templates/error.' . $actionName . '.failure.html';
-		$code = file_get_contents(__DIR__ . '/Templates/form.error.html');
-		$this->writeFile($fileName, $code);
+		$this->copyFileIfNotExists($fileName, 'form.flash.html');
+		$fileName = '/app/modules/' . $moduleName . '/templates/flash.' . $actionName . '.success.html';
+		$this->copyFileIfNotExists($fileName, 'form.error.html');
 	}
 
 	private function createInlineActionFiles($moduleName, $actionName)
 	{
 		// action itself
 		$fileName = '/app/modules/' . $moduleName . '/actions/' . $actionName . '.php';
-		$code = file_get_contents(__DIR__ . '/Templates/inline.php');
-		$code = str_replace('%MODULE%', $moduleName, $code);
-		$code = str_replace('%NAME%', $actionName, $code);
-		$this->writeFile($fileName, $code);
+		$replacements = array('MODULE' => $moduleName, 'NAME' => $actionName);
+		$this->copyFileIfNotExists($fileName, 'inline.php', $replacements);
 	}
 
 	private function createJsonActionFiles($moduleName, $actionName)
 	{
 		// action itself
 		$fileName = '/app/modules/' . $moduleName . '/actions/' . $actionName . '.php';
-		$code = file_get_contents(__DIR__ . '/Templates/json.php');
-		$code = str_replace('%MODULE%', $moduleName, $code);
-		$code = str_replace('%NAME%', $actionName, $code);
-		$this->writeFile($fileName, $code);
+		$replacements = array('MODULE' => $moduleName, 'NAME' => $actionName);
+		$this->copyFileIfNotExists($fileName, 'json.php', $replacements);
 	}
 
 	private function createFolderIfNotExists($folderPath)
